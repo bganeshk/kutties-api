@@ -1,3 +1,6 @@
+# Server 
+### This is excel based remote sync, for web its using web memory and in anodroid it uses sqllited
+
   Location: /Users/ganeshkumar/Documents/AMS/code/excel-api/
 
   Stack: TypeScript + Express + ExcelJS
