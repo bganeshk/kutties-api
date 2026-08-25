@@ -34,6 +34,11 @@ function sheetToRows(ws: ExcelJS.Worksheet): Row[] {
 
   if (headers.length === 0) return rows;
 
+  // detect which column acts as the primary key
+  const idCol = headers.includes('id') ? 'id'
+    : headers.includes('txid') ? 'txid'
+    : null;
+
   ws.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     const obj: Row = { id: '' };
@@ -41,7 +46,13 @@ function sheetToRows(ws: ExcelJS.Worksheet): Row[] {
       const key = headers[colNumber - 1];
       if (key) obj[key] = cell.value ?? null;
     });
-    if (obj['id']) rows.push(obj);
+    // synthesise a stable id from the pk column or fall back to row number
+    if (idCol) {
+      obj.id = String(obj[idCol] ?? '');
+    } else {
+      obj.id = String(rowNumber);
+    }
+    if (obj.id) rows.push(obj);
   });
 
   return rows;
