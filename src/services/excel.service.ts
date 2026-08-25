@@ -23,6 +23,27 @@ function getOrCreateSheet(wb: ExcelJS.Workbook, sheet: string): ExcelJS.Workshee
   return wb.getWorksheet(sheet) ?? wb.addWorksheet(sheet);
 }
 
+/** Flatten any ExcelJS cell value to a plain JS primitive. */
+function cellValue(raw: ExcelJS.CellValue): string | number | boolean | null {
+  if (raw === null || raw === undefined) return null;
+  // Rich-text object: { richText: Array<{text: string}> }
+  if (typeof raw === 'object' && 'richText' in (raw as object)) {
+    return (raw as any).richText.map((r: any) => r.text ?? '').join('');
+  }
+  // Hyperlink object: { text: string, hyperlink: string }
+  if (typeof raw === 'object' && 'text' in (raw as object)) {
+    return String((raw as any).text ?? '');
+  }
+  // Date object
+  if (raw instanceof Date) return raw.toISOString();
+  // Formula result: { formula: string, result: ... }
+  if (typeof raw === 'object' && 'result' in (raw as object)) {
+    return cellValue((raw as any).result);
+  }
+  if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') return raw;
+  return String(raw);
+}
+
 function sheetToRows(ws: ExcelJS.Worksheet): Row[] {
   const rows: Row[] = [];
   const headerRow = ws.getRow(1);
@@ -44,7 +65,7 @@ function sheetToRows(ws: ExcelJS.Worksheet): Row[] {
     const obj: Row = { id: '' };
     row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
       const key = headers[colNumber - 1];
-      if (key) obj[key] = cell.value ?? null;
+      if (key) obj[key] = cellValue(cell.value);
     });
     // synthesise a stable id from the pk column or fall back to row number
     if (idCol) {
