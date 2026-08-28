@@ -146,8 +146,18 @@ export async function updateRow(sheet: string, id: string, data: Record<string, 
   if (!ws) return null;
 
   const headers = getHeaders(ws);
-  const idCol = headers.indexOf('id') + 1;
-  if (idCol === 0) return null;
+
+  // Case-insensitive id column lookup (handles 'id', 'Id', 'ID', etc.)
+  const idColIndex = headers.findIndex((h) => h.toLowerCase() === 'id');
+  if (idColIndex === -1) return null;
+  const idCol = idColIndex + 1;
+
+  // Build a case-insensitive map from lowercased payload key → actual value
+  // so header 'FullName' matches payload key 'fullName'
+  const dataLower: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    dataLower[k.toLowerCase()] = v;
+  }
 
   let found: Row | null = null;
 
@@ -156,8 +166,10 @@ export async function updateRow(sheet: string, id: string, data: Record<string, 
     if (String(row.getCell(idCol).value) === id) {
       const updated: Row = { id };
       headers.forEach((h, i) => {
-        if (h === 'id') return;
-        const newVal = data[h] !== undefined ? data[h] : row.getCell(i + 1).value;
+        if (h.toLowerCase() === 'id') return;
+        const newVal = dataLower[h.toLowerCase()] !== undefined
+          ? dataLower[h.toLowerCase()]
+          : row.getCell(i + 1).value;
         row.getCell(i + 1).value = newVal as ExcelJS.CellValue;
         updated[h] = newVal;
       });
@@ -176,8 +188,9 @@ export async function deleteRow(sheet: string, id: string): Promise<boolean> {
   if (!ws) return false;
 
   const headers = getHeaders(ws);
-  const idCol = headers.indexOf('id') + 1;
-  if (idCol === 0) return false;
+  const idColIndex = headers.findIndex((h) => h.toLowerCase() === 'id');
+  if (idColIndex === -1) return false;
+  const idCol = idColIndex + 1;
 
   let deletedRowNumber = -1;
 
