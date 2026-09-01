@@ -77,4 +77,17 @@ router.delete('/:sheet/:id', async (req: Request, res: Response) => {
   res.json({ success: true, data: { id } } as ApiResponse<{ id: string }>);
 });
 
+
+// POST /api/:sheet/init — seed header row (idempotent, skips if headers already exist)
+router.post('/:sheet/init', async (req: Request, res: Response) => {
+  const { sheet } = req.params;
+  const { headers } = req.body as { headers?: string[] };
+  if (!Array.isArray(headers) || headers.length === 0) {
+    res.status(400).json({ success: false, error: 'headers array is required' });
+    return;
+  }
+  const written = await excel.initSheet(sheet, headers);
+  res.status(written ? 201 : 200).json({ success: true, data: { sheet, written } });
+});
+
 export default router;

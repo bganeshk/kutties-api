@@ -263,3 +263,30 @@ export async function listSheets(): Promise<string[]> {
   const wb = await loadWorkbook();
   return wb.worksheets.map((ws) => ws.name);
 }
+
+/**
+ * Ensure a sheet exists with the given headers.
+ * If the sheet already has a header row, it is left untouched (no overwrite).
+ * If the sheet is new (or has no header row), the headers are written and
+ * the workbook is saved.
+ * Returns true if headers were written, false if the sheet already existed.
+ */
+export async function initSheet(sheet: string, headers: string[]): Promise<boolean> {
+  const wb = await loadWorkbook();
+  const ws = getOrCreateSheet(wb, sheet);
+
+  const existingHeaders: string[] = [];
+  ws.getRow(1).eachCell((cell) => existingHeaders.push(String(cell.value ?? '')));
+
+  if (existingHeaders.filter(Boolean).length > 0) {
+    // Sheet already initialised — nothing to do
+    return false;
+  }
+
+  headers.forEach((h, i) => {
+    ws.getRow(1).getCell(i + 1).value = h;
+  });
+  ws.getRow(1).commit();
+  await saveWorkbook(wb);
+  return true;
+}
