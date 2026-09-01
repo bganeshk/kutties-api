@@ -99,6 +99,45 @@ function getHeaders(ws: ExcelJS.Worksheet): string[] {
   return headers;
 }
 
+/**
+ * Parse any common date representation to midnight UTC Date.
+ * Handles: ISO datetime (2024-01-15T...), ISO date (2024-01-15),
+ *          dd/MMM/yyyy (15/Jan/2024), dd-mm-yyyy / dd/mm/yyyy.
+ * Returns null for unrecognised formats.
+ */
+function parseRowDate(raw: unknown): Date | null {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+
+  // ISO datetime or date: 2024-01-15T... or 2024-01-15
+  const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const d = new Date(Date.UTC(+isoMatch[1], +isoMatch[2] - 1, +isoMatch[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // dd/MMM/yyyy  e.g. 15/Jan/2024
+  const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const dmyMatch = s.match(/^(\d{1,2})\/([A-Za-z]{3})\/(\d{4})$/);
+  if (dmyMatch) {
+    const month = MONTHS.indexOf(dmyMatch[2].toLowerCase());
+    if (month !== -1) {
+      const d = new Date(Date.UTC(+dmyMatch[3], month, +dmyMatch[1]));
+      return isNaN(d.getTime()) ? null : d;
+    }
+  }
+
+  // dd/mm/yyyy or dd-mm-yyyy
+  const numMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (numMatch) {
+    const d = new Date(Date.UTC(+numMatch[3], +numMatch[2] - 1, +numMatch[1]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
+}
+
 export async function listRows(sheet: string, opts: QueryOptions = {}): Promise<{ rows: Row[]; total: number }> {
   const wb = await loadWorkbook();
   const ws = wb.getWorksheet(sheet);
@@ -109,6 +148,18 @@ export async function listRows(sheet: string, opts: QueryOptions = {}): Promise<
   if (opts.filter) {
     for (const [key, value] of Object.entries(opts.filter)) {
       rows = rows.filter((r) => String(r[key] ?? '').toLowerCase().includes(value.toLowerCase()));
+    }
+  }
+
+  if (opts.sinceDate) {
+    const cutoff = new Date(opts.sinceDate + 'T00:00:00Z').getTime();
+    if (!isNaN(cutoff)) {
+      rows = rows.filter((r) => {
+        const dateVal = r.attendanceDate ?? r.AttendanceDate;
+        if (!dateVal) return true; // no date → keep
+        const parsed = parseRowDate(dateVal);
+        return parsed ? parsed.getTime() >= cutoff : true;
+      });
     }
   }
 

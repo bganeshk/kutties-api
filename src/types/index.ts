@@ -7,6 +7,8 @@ export interface QueryOptions {
   filter?: Record<string, string>;
   limit?: number;
   offset?: number;
+  /** ISO date string (YYYY-MM-DD). Rows whose attendanceDate is before this are excluded. */
+  sinceDate?: string;
 }
 
 export interface ApiResponse<T> {

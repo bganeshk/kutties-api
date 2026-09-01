@@ -13,7 +13,7 @@ router.get('/sheets', async (_req: Request, res: Response) => {
 // GET /api/:sheet — list rows (supports ?filter[field]=value&limit=N&offset=N)
 router.get('/:sheet', async (req: Request, res: Response) => {
   const { sheet } = req.params;
-  const { limit, offset, ...rest } = req.query as Record<string, string>;
+  const { limit, offset, sinceDate, ...rest } = req.query as Record<string, string>;
 
   const filter: Record<string, string> = {};
   for (const [key, value] of Object.entries(rest)) {
@@ -25,6 +25,7 @@ router.get('/:sheet', async (req: Request, res: Response) => {
     filter: Object.keys(filter).length ? filter : undefined,
     limit: limit ? parseInt(limit) : undefined,
     offset: offset ? parseInt(offset) : undefined,
+    sinceDate: sinceDate || undefined,
   });
 
   res.json({ success: true, data: rows, total } as ApiResponse<Row[]>);
