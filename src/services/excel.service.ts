@@ -265,6 +265,26 @@ export async function listSheets(): Promise<string[]> {
 }
 
 /**
+ * Add a single column header to an existing sheet if it is not already present.
+ * Returns true if the column was appended, false if it already existed or the
+ * sheet does not exist.
+ */
+export async function addColumn(sheet: string, column: string): Promise<boolean> {
+  const wb = await loadWorkbook();
+  const ws = wb.getWorksheet(sheet);
+  if (!ws) return false;
+
+  const headers = getHeaders(ws);
+  if (headers.includes(column)) return false;
+
+  const nextCol = headers.length + 1;
+  ws.getRow(1).getCell(nextCol).value = column;
+  ws.getRow(1).commit();
+  await saveWorkbook(wb);
+  return true;
+}
+
+/**
  * Ensure a sheet exists with the given headers.
  * If the sheet already has a header row, it is left untouched (no overwrite).
  * If the sheet is new (or has no header row), the headers are written and

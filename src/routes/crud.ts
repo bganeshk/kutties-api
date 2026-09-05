@@ -90,4 +90,16 @@ router.post('/:sheet/init', async (req: Request, res: Response) => {
   res.status(written ? 201 : 200).json({ success: true, data: { sheet, written } });
 });
 
+// POST /api/:sheet/add-column — append a column header if not already present
+router.post('/:sheet/add-column', async (req: Request, res: Response) => {
+  const { sheet } = req.params;
+  const { column } = req.body as { column?: string };
+  if (!column || typeof column !== 'string') {
+    res.status(400).json({ success: false, error: 'column is required' });
+    return;
+  }
+  const added = await excel.addColumn(sheet, column);
+  res.json({ success: true, data: { added } });
+});
+
 export default router;
